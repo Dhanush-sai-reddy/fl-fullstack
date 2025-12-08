@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "../../../components/Layout";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const DEFAULT_EMAIL = "host@example.com";
 
 export default function ProjectRoundsPage() {
   const router = useRouter();
   const { projectId } = router.query;
+  const { getAuthHeaders } = useAuth();
 
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,7 @@ export default function ProjectRoundsPage() {
     if (!projectId) return;
 
     fetch(`${API_BASE_URL}/api/projects/${projectId}/rounds`, {
-      headers: { "x-user-email": DEFAULT_EMAIL },
+      headers: getAuthHeaders(),
     })
       .then((res) => res.json())
       .then((data) => {

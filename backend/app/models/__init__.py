@@ -10,4 +10,5 @@ from app.models.model_config import (
 from app.models.training_round import TrainingRound, RoundStatus  # noqa: F401
 from app.models.client_update import ClientUpdate  # noqa: F401
 from app.models.model_snapshot import ModelSnapshot, SnapshotSource  # noqa: F401
+from app.models.api_token import ApiToken, TokenType  # noqa: F401
 
