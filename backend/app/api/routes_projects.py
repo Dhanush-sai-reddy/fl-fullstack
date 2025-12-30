@@ -11,6 +11,7 @@ from app.models.project_role import ProjectRole, ProjectRoleType
 from app.models.user import User
 from app.schemas.projects import (
     ModelConfigOut,
+    ModelConfigCreate,
     ProjectCreate,
     ProjectDetailOut,
     ProjectOut,
@@ -69,13 +70,27 @@ def create_project(
     db.add(project)
     db.flush()
 
-    base_model_id, tuning_strategy, precision = _recommend_model_for_task(payload.task_type)
+    # Use custom model config if provided, otherwise use recommended
+    if payload.model_config and payload.model_config.base_model_id:
+        base_model_id = payload.model_config.base_model_id
+        tuning_strategy = payload.model_config.tuning_strategy or TuningStrategy.lora
+        precision = payload.model_config.precision or PrecisionType.fp16
+    else:
+        base_model_id, tuning_strategy, precision = _recommend_model_for_task(payload.task_type)
+    
     model_cfg = ModelConfig(
         project_id=project.id,
         base_model_id=base_model_id,
         hf_task=payload.task_type,
         tuning_strategy=tuning_strategy,
         precision=precision,
+        max_seq_len=payload.model_config.max_seq_len if payload.model_config else 512,
+        learning_rate=payload.model_config.learning_rate if payload.model_config else 5e-5,
+        num_train_epochs=payload.model_config.num_train_epochs if payload.model_config else 3,
+        batch_size=payload.model_config.batch_size if payload.model_config else 8,
+        image_size=payload.model_config.image_size if payload.model_config else None,
+        resize_strategy=payload.model_config.resize_strategy if payload.model_config else None,
+        normalize=payload.model_config.normalize if payload.model_config else True,
     )
     db.add(model_cfg)
 

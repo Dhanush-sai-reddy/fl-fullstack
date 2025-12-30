@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Layout from "../../components/Layout";
 import { useAuth } from "../../contexts/AuthContext";
+import ProjectWizard from "../../components/ProjectWizard";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -10,10 +11,10 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [showJoinForm, setShowJoinForm] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "", task_type: "text_classification" });
   const [joinCode, setJoinCode] = useState("");
+  const [joinError, setJoinError] = useState(null);
 
   useEffect(() => {
     loadProjects();
@@ -34,45 +35,40 @@ export default function ProjectsPage() {
       });
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/projects`, {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(createForm),
-      });
-      if (res.ok) {
-        setShowCreateForm(false);
-        setCreateForm({ name: "", description: "", task_type: "text_classification" });
-        loadProjects();
-      } else {
-        const data = await res.json();
-        alert(`Error: ${data.detail || "Failed to create project"}`);
-      }
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    }
+  const handleWizardSuccess = (project) => {
+    setShowWizard(false);
+    loadProjects();
+    // Optionally redirect to the new project
+    // window.location.href = `/projects/${project.id}`;
   };
 
   const handleJoin = async (e) => {
     e.preventDefault();
+    if (!joinCode.trim()) {
+      setJoinError("Please enter an invite code");
+      return;
+    }
+
+    setJoinError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/projects/join`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ invite_code: joinCode }),
+        body: JSON.stringify({ invite_code: joinCode.toUpperCase().trim() }),
       });
       if (res.ok) {
+        const project = await res.json();
         setShowJoinForm(false);
         setJoinCode("");
         loadProjects();
+        // Optionally redirect to the project
+        // window.location.href = `/projects/${project.id}`;
       } else {
         const data = await res.json();
-        alert(`Error: ${data.detail || "Invalid invite code"}`);
+        setJoinError(data.detail || "Invalid invite code. Please check and try again.");
       }
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      setJoinError(`Error: ${err.message}`);
     }
   };
 
@@ -111,7 +107,7 @@ export default function ProjectsPage() {
           </button>
           <button
             onClick={() => {
-              setShowCreateForm(!showCreateForm);
+              setShowWizard(true);
               setShowJoinForm(false);
             }}
             className="btn btn-primary"
@@ -121,57 +117,11 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {showCreateForm && (
-        <div className="card" style={{ marginBottom: "24px" }}>
-          <h2 style={{ marginBottom: "24px", fontSize: "1.5rem" }}>Create New Project</h2>
-          <form onSubmit={handleCreate}>
-            <div className="form-group">
-              <label className="form-label">Project Name</label>
-              <input
-                type="text"
-                value={createForm.name}
-                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                className="form-input"
-                placeholder="My FL Project"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Description</label>
-              <textarea
-                value={createForm.description}
-                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                className="form-textarea"
-                placeholder="Describe your federated learning project..."
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Task Type</label>
-              <select
-                value={createForm.task_type}
-                onChange={(e) => setCreateForm({ ...createForm, task_type: e.target.value })}
-                className="form-select"
-              >
-                <option value="text_classification">Text Classification</option>
-                <option value="summarization">Summarization</option>
-                <option value="qa">Question Answering</option>
-                <option value="generation">Text Generation</option>
-              </select>
-            </div>
-            <div className="flex-center gap-sm" style={{ marginTop: "24px" }}>
-              <button type="submit" className="btn btn-primary">
-                Create Project
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+      {showWizard && (
+        <ProjectWizard
+          onClose={() => setShowWizard(false)}
+          onSuccess={handleWizardSuccess}
+        />
       )}
 
       {showJoinForm && (
@@ -179,27 +129,45 @@ export default function ProjectsPage() {
           <h2 style={{ marginBottom: "24px", fontSize: "1.5rem" }}>Join Project</h2>
           <form onSubmit={handleJoin}>
             <div className="form-group">
-              <label className="form-label">Invite Code</label>
+              <label className="form-label">Session Code / Invite Code</label>
               <input
                 type="text"
                 value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setJoinCode(e.target.value.toUpperCase());
+                  setJoinError(null);
+                }}
                 className="form-input"
-                placeholder="ABCD1234"
-                style={{ fontFamily: "monospace", fontSize: "1.125rem", letterSpacing: "0.1em" }}
+                placeholder="EX: X9Y2Z"
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "1.125rem",
+                  letterSpacing: "0.1em",
+                  textAlign: "center",
+                  fontWeight: 600,
+                }}
                 required
+                autoFocus
               />
+              {joinError && (
+                <div style={{ marginTop: "8px", color: "var(--error)", fontSize: "0.875rem" }}>
+                  {joinError}
+                </div>
+              )}
+              <p className="text-muted" style={{ marginTop: "8px", fontSize: "0.875rem" }}>
+                Enter the invite code provided by the project host
+              </p>
             </div>
             <div className="flex-center gap-sm" style={{ marginTop: "24px" }}>
-              <button type="submit" className="btn btn-primary">
-                Join Project
-              </button>
               <button
                 type="button"
                 onClick={() => setShowJoinForm(false)}
                 className="btn btn-secondary"
               >
                 Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Join Project
               </button>
             </div>
           </form>
@@ -229,7 +197,7 @@ export default function ProjectsPage() {
                 Create a new project or join one with an invite code
               </p>
               <button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => setShowWizard(true)}
                 className="btn btn-primary"
               >
                 Create Your First Project

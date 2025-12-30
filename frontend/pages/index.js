@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import Layout from "../components/Layout";
+import JoinNodeModal from "../components/JoinNodeModal";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function Home() {
+  const router = useRouter();
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health/ready`)
@@ -50,7 +54,7 @@ export default function Home() {
             WebkitTextFillColor: "transparent",
           }}
         >
-          FedLearn Nexus
+          FedLearn
         </h1>
         <p
           style={{
@@ -114,8 +118,21 @@ export default function Home() {
             className="card"
             style={{
               padding: "32px",
+              cursor: "pointer",
+              transition: "all 0.3s",
               border: "1px solid var(--border)",
               height: "100%",
+            }}
+            onClick={() => setShowJoinModal(true)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px)";
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.boxShadow = "0 8px 24px rgba(6, 182, 212, 0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.3)";
             }}
           >
             <div
@@ -178,6 +195,8 @@ export default function Home() {
           Powered by FastAPI & Hugging Face • Local Simulation Mode
         </p>
       </div>
+
+      {showJoinModal && <JoinNodeModal onClose={() => setShowJoinModal(false)} />}
 
       <style jsx>{`
         @keyframes pulse {

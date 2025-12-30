@@ -40,3 +40,9 @@ class ModelConfig(Base):
     max_seq_len: Mapped[int] = mapped_column(Integer, nullable=False, default=512)
     learning_rate: Mapped[float] = mapped_column(Float, nullable=False, default=5e-5)
     num_train_epochs: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    
+    # Data preprocessing
+    batch_size: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    image_size: Mapped[int | None] = mapped_column(Integer, nullable=True)  # For vision tasks
+    resize_strategy: Mapped[str | None] = mapped_column(String(50), nullable=True)  # 'crop', 'pad', 'resize'
+    normalize: Mapped[bool] = mapped_column(default=True, nullable=False)

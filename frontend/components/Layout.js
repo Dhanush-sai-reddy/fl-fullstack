@@ -36,7 +36,7 @@ export default function Layout({ children }) {
             FL
           </div>
           <span style={{ fontWeight: 700, fontSize: "1.25rem", color: "var(--text-primary)" }}>
-            FedLearn Nexus
+            FedLearn
           </span>
         </Link>
         <nav style={{ display: "flex", gap: "24px", alignItems: "center" }}>
