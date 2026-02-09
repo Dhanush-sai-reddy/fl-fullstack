@@ -3,6 +3,7 @@ export enum AppMode {
   HOST_SETUP = 'HOST_SETUP',
   HOST_DASHBOARD = 'HOST_DASHBOARD',
   CLIENT = 'CLIENT',
+  BROWSER_TRAINING = 'BROWSER_TRAINING',
 }
 
 export interface ModelConfig {
@@ -44,11 +45,11 @@ export interface LogEntry {
   type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
 }
 
-export type P2PMessageType = 
-  | 'JOIN_REQUEST' 
-  | 'JOIN_ACCEPT' 
-  | 'START_ROUND' 
-  | 'CLIENT_UPDATE' 
+export type P2PMessageType =
+  | 'JOIN_REQUEST'
+  | 'JOIN_ACCEPT'
+  | 'START_ROUND'
+  | 'CLIENT_UPDATE'
   | 'ROUND_COMPLETE'
   | 'SESSION_CLOSED';
 

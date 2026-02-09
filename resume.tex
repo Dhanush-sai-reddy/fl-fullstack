@@ -1,0 +1,202 @@
+\documentclass[10pt, letterpaper]{article}
+
+% Packages:
+\usepackage[
+    ignoreheadfoot, 
+    top=1.5 cm, 
+    bottom=1.5 cm, 
+    left=1.5 cm, 
+    right=1.5 cm, 
+    footskip=1.0 cm
+]{geometry} 
+\usepackage{titlesec} 
+\usepackage{tabularx} 
+\usepackage{array} 
+\usepackage[dvipsnames]{xcolor} 
+\definecolor{primaryColor}{RGB}{0, 79, 144} 
+\usepackage{enumitem} 
+\usepackage{fontawesome5} 
+\usepackage{amsmath} 
+\usepackage[
+    pdftitle={Dhanush Sai Reddy CV},
+    pdfauthor={Dhanush Sai Reddy},
+    pdfcreator={LaTeX},
+    colorlinks=true,
+    urlcolor=primaryColor
+]{hyperref} 
+\usepackage[pscoord]{eso-pic} 
+\usepackage{calc} 
+\usepackage{bookmark} 
+\usepackage{lastpage} 
+\usepackage{changepage} 
+\usepackage{paracol} 
+\usepackage{ifthen} 
+\usepackage{needspace} 
+\usepackage{iftex} 
+
+% Ensure that generate pdf is machine readable/ATS parsable:
+\ifPDFTeX
+    \input{glyphtounicode}
+    \pdfgentounicode=1
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+\fi
+
+% Settings:
+\AtBeginEnvironment{adjustwidth}{\partopsep0pt} 
+\pagestyle{empty} 
+\setcounter{secnumdepth}{0} 
+\setlength{\parindent}{0pt} 
+\setlength{\topskip}{0pt} 
+\setlength{\columnsep}{0cm} 
+\makeatletter
+\let\ps@customFooterStyle\ps@plain 
+\patchcmd{\ps@customFooterStyle}{\thepage}{
+    \color{gray}\textit{\small Dhanush Sai Reddy - Page \thepage{} of \pageref*{LastPage}}
+}{}{} 
+\makeatother
+\pagestyle{customFooterStyle}
+
+\titleformat{\section}{\needspace{4\baselineskip}\bfseries\large}{}{0pt}{}[\vspace{1pt}\titrule]
+
+\titlespacing{\section}{-1pt}{0.3 cm}{0.2 cm}
+
+\renewcommand\labelitemi{$\circ$} 
+
+\newenvironment{highlights}{
+    \begin{itemize}[
+        topsep=0.10 cm,
+        parsep=0.10 cm,
+        partopsep=0pt,
+        itemsep=0pt,
+        leftmargin=0.4 cm + 10pt
+    ]
+}{
+    \end{itemize}
+} 
+
+\newenvironment{onecolentry}{
+    \begin{adjustwidth}{
+        0.2 cm + 0.00001 cm
+    }{
+        0.2 cm + 0.00001 cm
+    }
+}{
+    \end{adjustwidth}
+} 
+
+\newenvironment{twocolentry}[2][]{
+    \onecolentry
+    \def\secondColumn{#2}
+    \setcolumnwidth{\fill, 4.5 cm}
+    \begin{paracol}{2}
+}{
+    \switchcolumn \raggedleft \secondColumn
+    \end{paracol}
+    \endonecolentry
+} 
+
+\newenvironment{header}{
+    \setlength{\topsep}{0pt}\par\kern\topsep\centering\linespread{1.5}
+}{
+    \par\kern\topsep
+} 
+
+\begin{document}
+
+\begin{header}
+    \textbf{\LARGE Dhanush Sai Reddy}
+
+    \vspace{5pt}
+
+    \normalsize
+    \mbox{\faPhone\ +91-7396913943}
+    \kern 5.0pt%
+    \mbox{|}
+    \kern 5.0pt%
+    \mbox{\href{mailto:dhanushsaireddy777@gmail.com}{\faEnvelope\ dhanushsaireddy777@gmail.com}}
+    \kern 5.0pt%
+    \mbox{|}
+    \kern 5.0pt%
+    \mbox{\href{https://linkedin.com/in/dhanush-sai-reddy-d}{\faLinkedin\ dhanush-sai-reddy-d}}
+    \kern 5.0pt%
+    \mbox{|}
+    \kern 5.0pt%
+    \mbox{\href{https://github.com/Dhanush-sai-reddy}{\faGithub\ Dhanush-sai-reddy}}
+\end{header}
+
+\section{Education}
+    \begin{twocolentry}{2023 – 2027}
+        \textbf{Indian Institute of Information Technology (IIIT), Pune}, B.Tech in Computer Science
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlights}
+            \item Roll No: 112315048
+        \end{highlights}
+    \end{onecolentry}
+
+\section{Projects}
+    \begin{twocolentry}{Feb 2026 – Present}
+        \textbf{FL Platform — Decentralized AI Orchestration System}
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlights}
+            \item Engineered a \textbf{hybrid federated learning architecture} supporting browser-based local simulation (BroadcastChannel) and remote Python execution (FastAPI).
+            \item Architected a \textbf{self-deployed MCP (Model Context Protocol)} infrastructure to standardize model resource discovery, integrated with \textbf{Google Gemini 1.5 Pro} for autonomous script generation.
+            \item Built a \textbf{Glassmorphism} admin console using \textbf{React 19} and \textbf{Recharts} to visualize real-time training loss, resource convergence, and P2P telemetry.
+            \item Implemented \textbf{Weighted FedAvg} aggregation with \textbf{in-place tensor operations} in Python, optimizing memory for high-dimensional gradient updates.
+            \item Designed a resilient \textbf{Client SDK} with exponential backoff and \textbf{flat-dictionary serialization} for bandwidth-efficient transmission of \textbf{PEFT/LoRA} adapters.
+        \end{highlights}
+    \end{onecolentry}
+
+    \vspace{0.2cm}
+
+    \begin{twocolentry}{Jan 2026 – Present}
+        \textbf{FlowChat — Anonymous Video Chat Platform}
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlights}
+            \item Architected a real-time matching engine using \textbf{Node.js} and \textbf{Redis Sorted Sets}, optimizing sub-millisecond user pairing.
+            \item Engineered a \textbf{Karma-Weighted} queuing algorithm to deprioritize reported users dynamically without explicit banning.
+            \item Integrated a dual-layer verification system utilizing a \textbf{FastAPI} backend (Hugging Face ViT) and client-side \textbf{face-api.js} fallback.
+            \item Enforced device-based bans and daily limits using \textbf{FingerprintJS} and Redis TTL keys.
+        \end{highlights}
+    \end{onecolentry}
+
+    \vspace{0.2cm}
+
+    \begin{twocolentry}{Jan 2026 – Present}
+        \textbf{HackOverflow — Campus Management System}
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlights}
+            \item Architected a \textbf{Microservices} ecosystem with a \textbf{Node.js} API and \textbf{Go (Fiber)} scheduler, routed via an \textbf{Nginx Reverse Proxy}.
+            \item Engineered a high-performance \textbf{Custom Calendar Engine} in React, implementing a scratch-built drag-and-drop interface for scheduling.
+            \item Built a conflict detection microservice using \textbf{Interval Trees} in Go to process 500+ overlapping booking queries under 10ms.
+            \item Integrated \textbf{Socket.io} websockets to broadcast live booking updates, ensuring data consistency across concurrent users.
+        \end{highlights}
+    \end{onecolentry}
+
+\section{Technical Skills}
+    \begin{onecolentry}
+        \textbf{Languages:} Python, Go, C++, C, Java, JavaScript, TypeScript, SQL (PostgreSQL)
+    \end{onecolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \textbf{Frameworks:} React.js, Next.js, FastAPI, Node.js, Socket.io, Fiber, PyTorch, Scikit-Learn
+    \end{onecolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \textbf{Tools:} Docker, Redis, Git, GitHub, Hugging Face Spaces, MCP
+    \end{onecolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \textbf{Concepts:} Microservices, Real-time Systems, Federated Learning, Event-Driven Architecture, MLOps
+    \end{onecolentry}
+
+\section{Areas of Interest}
+    \begin{onecolentry}
+        Machine Learning, Distributed Systems, Medical Image Analysis, Full Stack Development.
+    \end{onecolentry}
+
+\end{document}

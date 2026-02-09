@@ -203,3 +203,150 @@ def submit_update(
         "aggregated": aggregated,
         "created_snapshot_version": created_snapshot_version,
     }
+
+
+# ============================================================================
+# Browser Client Endpoints (Device-ID based, simpler than project/round flow)
+# ============================================================================
+
+@router.post("/fl/updates")
+def submit_browser_update(
+    payload: ClientUpdateIn,
+    db: Session = Depends(get_db),
+) -> Dict[str, object]:
+    """
+    Simplified endpoint for browser clients.
+    Auto-creates or finds the latest round for the model.
+    """
+    # For browser clients, we use a default project or create one
+    # In production, you'd match by model_id or similar
+    
+    # Get or create a default browser-training project
+    project = db.query(Project).filter(Project.name == "browser-training").first()
+    if not project:
+        project = Project(
+            name="browser-training",
+            description="Auto-created project for browser-based FL training",
+            model_id="browser-lora",
+            use_peft=True,
+        )
+        db.add(project)
+        db.commit()
+        db.refresh(project)
+    
+    # Get or create current round
+    tr = (
+        db.query(TrainingRound)
+        .filter(TrainingRound.project_id == project.id)
+        .filter(TrainingRound.status == RoundStatus.collecting)
+        .order_by(TrainingRound.round_number.desc())
+        .first()
+    )
+    
+    if not tr:
+        round_number = _next_round_number(db, project.id)
+        tr = TrainingRound(
+            project_id=project.id,
+            round_number=round_number,
+            global_model_version=0,
+            status=RoundStatus.collecting,
+            expected_clients=10,
+            min_clients=2,
+        )
+        db.add(tr)
+        db.commit()
+        db.refresh(tr)
+    
+    # Store update
+    cu = ClientUpdate(
+        round_id=tr.id,
+        user_id=None,
+        num_examples=payload.num_examples,
+        avg_loss=payload.avg_loss,
+        weights_delta=payload.weights_delta,
+    )
+    db.add(cu)
+    db.commit()
+    
+    # Check aggregation
+    updates = db.query(ClientUpdate).filter(ClientUpdate.round_id == tr.id).all()
+    aggregated = False
+    
+    if len(updates) >= tr.min_clients and tr.status != RoundStatus.aggregated:
+        updates_payload: List[ClientWeights] = [
+            {"num_examples": u.num_examples, "weights_delta": u.weights_delta}
+            for u in updates
+        ]
+        fedavg_weighted(updates_payload)
+        tr.status = RoundStatus.aggregated
+        db.add(tr)
+        db.commit()
+        aggregated = True
+    
+    return {
+        "success": True,
+        "roundId": str(tr.id),
+        "aggregationStatus": "completed" if aggregated else "pending",
+        "clientsInRound": len(updates),
+    }
+
+
+@router.post("/telemetry")
+def receive_telemetry(
+    payload: Dict[str, object],
+) -> Dict[str, str]:
+    """
+    Receive real-time telemetry from browser clients.
+    In production, you'd store this in a time-series DB or stream to a dashboard.
+    """
+    # Log telemetry (in production: store in InfluxDB, Prometheus, etc.)
+    device_id = payload.get("deviceId", "unknown")
+    epoch = payload.get("epoch", 0)
+    batch = payload.get("batch", 0)
+    loss = payload.get("loss", 0)
+    speed = payload.get("speed", 0)
+    
+    print(f"[Telemetry] Device={device_id} Epoch={epoch} Batch={batch} Loss={loss:.4f} Speed={speed:.0f}")
+    
+    return {"status": "received"}
+
+
+@router.get("/fl/models/{model_id}/weights")
+def get_global_weights(
+    model_id: str,
+    db: Session = Depends(get_db),
+) -> Dict[str, object]:
+    """
+    Get the latest aggregated global weights for a model.
+    Browser clients call this at the start of each round.
+    """
+    # Find the latest aggregated snapshot
+    project = db.query(Project).filter(Project.name == "browser-training").first()
+    if not project:
+        raise HTTPException(status_code=404, detail="No training project found")
+    
+    snapshot = (
+        db.query(ModelSnapshot)
+        .filter(ModelSnapshot.project_id == project.id)
+        .filter(ModelSnapshot.source == SnapshotSource.aggregated)
+        .order_by(ModelSnapshot.version.desc())
+        .first()
+    )
+    
+    if not snapshot:
+        # No aggregated weights yet - return empty (first round)
+        return {
+            "version": 0,
+            "weights": None,
+            "message": "No aggregated weights available yet",
+        }
+    
+    # In production, you'd load actual weights from storage_path
+    # For now, return metadata
+    return {
+        "version": snapshot.version,
+        "roundId": str(snapshot.round_id),
+        "storagePath": snapshot.storage_path,
+        "weights": None,  # Would be actual weight data in production
+    }
+
