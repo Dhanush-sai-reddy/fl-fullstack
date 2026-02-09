@@ -2,60 +2,81 @@
 
 A hybrid federated learning system that bridges the gap between local browser-based simulation and real-world distributed training. Orchestrated by **Google Gemini**, visualized with **React 19**, and powered by **FastAPI**.
 
+🚀 **Live MCP Server**: [Hugging Face Space](https://huggingface.co/spaces/Dhanushsaireddy144/multi-task-codefetch-mcp)
+
 ## Key Features
 
-### Gemini AI Orchestrator
+### 🌐 Browser-Based Training (WebGPU)
+- **Zero-Install Client**: Train models directly in the browser using WebGPU compute shaders.
+- **LoRA Support**: Efficient fine-tuning of Large Language Models (LLMs) using Low-Rank Adaptation (LoRA).
+- **Privacy-First**: Raw data never leaves the user's device; only weight deltas are shared.
+- **OPFS Checkpointing**: Persistent storage of model weights and training progress using the Origin Private File System.
+- **Sybil Resistance**: Device fingerprinting prevents malicious actors from flooding the network with fake clients.
+
+### 🤖 Gemini AI Orchestrator
 - **Autonomous Script Generation**: Gemini 1.5 Pro dynamically writes PyTorch/Flower training clients based on project requirements.
-- **MCP (Model Context Protocol)**: Custom protocol for standardized resource discovery and capabilities handshake between Host and Edge nodes.
+- **Model Discovery**: Automatically finds optimal models on Hugging Face based on task description.
 - **Automated Telemetry**: AI-generated logs and training summaries for human-readable insight into convergence status.
 
-### Hybrid Architecture
-- **Local Simulation Mode**: Uses `BroadcastChannel` APIs to simulate varying network conditions and federated rounds entirely within the browser.
-- **Remote Execution**: Production-ready Python Client SDK (`fl_client`) for connecting Jupyter Notebooks, Colab instances, or edge devices.
+### 🔗 Model Context Protocol (MCP)
+- **Standardized Handshake**: Custom protocol for negotiating training capabilities between Host and Edge nodes.
+- **Remote Validation**: Validates task compatibility against a deployed MCP server on Hugging Face Spaces.
+- **Resource Discovery**: Exposes available models and datasets via a uniform interface.
 
-### Performance & Visualization
+### 📊 Performance & Visualization
 - **Glassmorphism UI**: Futuristic admin dashboard built with Tailwind CSS and Framer Motion.
 - **Real-time Analytics**: `Recharts` implementation for tracking loss curves, accuracy, and memory usage across rounds.
 - **Efficient Aggregation**: **Weighted FedAvg** algorithm with in-place tensor operations to minimize memory overhead.
 
+## Architecture
+
+1. **Frontend (React + Vite)**:
+   - `fl.worker.ts`: Web Worker for background training.
+   - `webgpu-engine.ts`: Custom WGSL compute shaders for matrix multiplication and gradient descent.
+   - `FLContext.tsx`: State management for training lifecycle.
+
+2. **Backend (FastAPI)**:
+   - `/api/fl/updates`: Receives weight deltas from browser clients.
+   - `/api/fl/models`: Broadcasts global model weights.
+   - `fedavg_weighted`: Aggregates updates securely.
+
+3. **MCP Server (Python)**:
+   - Hosted on Hugging Face Spaces.
+   - Provides task validation and inference capabilities.
+
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Recharts, Lucide React
-- **Backend**: FastAPI, PostgreSQL, SQLAlchemy, SlowAPI (Rate Limiting)
+- **Frontend**: React 19, TypeScript, **WebGPU**, Vite, Tailwind CSS, Recharts
+- **Backend**: FastAPI, PostgreSQL, SQLAlchemy
 - **AI/ML**: Google Gemini API (Orchestration), Hugging Face Transformers, PEFT/LoRA
 - **DevOps**: Docker Compose, Nginx
 
-## Architecture Highlights
+## Setup & Running
 
-### Model Context Protocol (MCP)
-The system uses a custom JSON-based protocol for negotiating training capabilities:
-```json
-{
-  "protocol": "1.0.4-LTS",
-  "capabilities": ["peft", "lora_rank_8"],
-  "resource": "mcp://hf.co/bert-base-uncased"
-}
-```
+### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+ (for local dev)
+- Google Gemini API Key
 
-### Client SDK 
-The Python SDK features automatic tensor flattening and efficient serialization for gradient transmission.
+### Quick Start (Docker)
 
-```python
-# Connect to the orchestration server
-client = FLClient(api_base_url="http://localhost:8000", api_token="...")
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Dhanush-sai-reddy/fl-fullstack.git
+   cd fl-fullstack
+   ```
 
-# Submit weighted updates
-client.submit_update(
-    project_id="...",
-    weights_delta=local_weights,
-    num_examples=1024
-)
-```
+2. Create a `.env` file in `frontend/`:
+   ```env
+   VITE_GEMINI_API_KEY=your_api_key_here
+   ```
 
-## Setup
+3. Start the stack:
+   ```bash
+   docker-compose up --build
+   ```
 
-See `SETUP.md` for detailed installation instructions.
+4. Open `http://localhost:5173` and select **"Browser Training"**.
 
-1. **Start Backend**: `docker-compose up -d`
-2. **Start Frontend**: `npm run dev` in `frontend/`
-3. **Configure AI**: Set `VITE_GEMINI_API_KEY` in `.env`
+## License
+MIT
