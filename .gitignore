@@ -54,3 +54,6 @@ secrets/
 # OS
 Thumbs.db
 
+
+# MCP Server (Local)
+multi-task-codefetch-mcp/
