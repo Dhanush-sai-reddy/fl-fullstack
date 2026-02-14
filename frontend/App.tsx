@@ -5,6 +5,7 @@ import { HostDashboard } from './components/HostDashboard';
 import { ClientView } from './components/ClientView';
 import { FLDashboard } from './components/FLDashboard';
 import { FLProvider } from './context/FLContext';
+import { WebMCPBridge } from './components/WebMCPBridge';
 import { Network, MonitorSmartphone, ShieldCheck, Cpu } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -117,6 +118,7 @@ const App: React.FC = () => {
               ← Back to Home
             </button>
             <FLProvider serverUrl="http://localhost:8000">
+              <WebMCPBridge />
               <FLDashboard serverUrl="http://localhost:8000" />
             </FLProvider>
           </div>
