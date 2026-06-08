@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { WebMCPClient } from '../utils/mcpClient';
 
 // Types
 export interface FLConfig {
@@ -31,6 +32,7 @@ export interface FLContextType {
     error: string | null;
     hasGPU: boolean;
     mcpStatus: MCPStatus;
+    mcpClient: WebMCPClient | null;
 
     // Dataset
     datasetHandle: FileSystemDirectoryHandle | null;
@@ -46,7 +48,7 @@ export interface FLContextType {
 const FLContext = createContext<FLContextType | null>(null);
 
 // MCP Server URL
-const MCP_URL = 'https://huggingface.co/spaces/Dhanushsaireddy144/multi-task-codefetch-mcp';
+const MCP_URL = 'https://dhanushsaireddy144-multi-task-codefetch-mcp.hf.space';
 
 export function FLProvider({ children, serverUrl }: { children: React.ReactNode; serverUrl: string }) {
     const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export function FLProvider({ children, serverUrl }: { children: React.ReactNode;
     const [error, setError] = useState<string | null>(null);
     const [hasGPU, setHasGPU] = useState(false);
     const [mcpStatus, setMcpStatus] = useState<MCPStatus>('connecting');
+    const [mcpClient, setMcpClient] = useState<WebMCPClient | null>(null);
     const [datasetHandle, setDatasetHandle] = useState<FileSystemDirectoryHandle | null>(null);
 
     const workerRef = useRef<Worker | null>(null);
@@ -76,6 +79,24 @@ export function FLProvider({ children, serverUrl }: { children: React.ReactNode;
             }
         };
         initFingerprint();
+    }, []);
+
+    // Initialize MCP Client on mount
+    useEffect(() => {
+        console.log('[FLContext] Connecting to MCP at:', MCP_URL);
+        const client = new WebMCPClient(MCP_URL, (status) => {
+            setMcpStatus(status);
+        });
+
+        client.connect().then(() => {
+            setMcpClient(client);
+        }).catch(err => {
+            console.error('[FLContext] MCP connection failed:', err);
+        });
+
+        return () => {
+            client.close();
+        };
     }, []);
 
     // Initialize worker and WebGPU
@@ -229,6 +250,7 @@ export function FLProvider({ children, serverUrl }: { children: React.ReactNode;
         error,
         hasGPU,
         mcpStatus,
+        mcpClient,
         datasetHandle,
         initialize,
         startTraining,

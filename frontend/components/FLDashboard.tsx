@@ -15,12 +15,43 @@ export function FLDashboard({ serverUrl }: FLDashboardProps) {
         error,
         hasGPU,
         mcpStatus,
+        mcpClient,
         datasetHandle,
         initialize,
         startTraining,
         stopTraining,
         selectDataset
     } = useFL();
+
+    const [aiInput, setAiInput] = useState('');
+    const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: 'Hi! I am Gemini, equipped with MCP filesystem and model execution tools. How can I help you explore the project codebase?' }
+    ]);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiLogs, setAiLogs] = useState<string[]>([]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!aiInput.trim() || aiLoading || !mcpClient) return;
+
+        const userMsg = aiInput;
+        setAiInput('');
+        setAiMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setAiLoading(true);
+        setAiLogs([]);
+
+        try {
+            const { queryGeminiWithMCP } = await import('../services/geminiService');
+            const response = await queryGeminiWithMCP(userMsg, mcpClient, (log) => {
+                setAiLogs(prev => [...prev, log]);
+            });
+            setAiMessages(prev => [...prev, { role: 'model', text: response }]);
+        } catch (err) {
+            setAiMessages(prev => [...prev, { role: 'model', text: `Failed to query: ${err}` }]);
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const [config, setConfig] = useState<FLConfig>({
         modelId: 'bert-base-uncased',
@@ -221,6 +252,51 @@ export function FLDashboard({ serverUrl }: FLDashboardProps) {
                     </div>
                 </div>
             )}
+
+            {/* AI Assistant Section */}
+            <div className="fl-ai-assistant">
+                <h3>AI Assistant (MCP-Powered Workspace & Model Access)</h3>
+                <p className="fl-ai-desc">
+                    Ask Gemini questions. The model can inspect the workspace codebase and execute Hugging Face models using the connected MCP server.
+                </p>
+                <div className="fl-ai-chat">
+                    <div className="fl-ai-messages">
+                        {aiMessages.map((msg, index) => (
+                            <div key={index} className={`fl-ai-msg ${msg.role}`}>
+                                <div className="fl-ai-sender">{msg.role === 'user' ? 'You' : 'Gemini'}</div>
+                                <div className="fl-ai-text">{msg.text}</div>
+                            </div>
+                        ))}
+                        {aiLoading && (
+                            <div className="fl-ai-msg model loading">
+                                <div className="fl-ai-sender">Gemini</div>
+                                <div className="fl-ai-text">
+                                    Thinking...
+                                    {aiLogs.length > 0 && (
+                                        <div className="fl-ai-logs">
+                                            {aiLogs.map((log, i) => (
+                                                <div key={i} className="fl-ai-log-line">→ {log}</div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <form onSubmit={handleSendMessage} className="fl-ai-input-form">
+                        <input
+                            type="text"
+                            placeholder={mcpStatus === 'connected' ? "Ask about the project or codebase..." : "Connect MCP to use assistant"}
+                            value={aiInput}
+                            onChange={(e) => setAiInput(e.target.value)}
+                            disabled={aiLoading || mcpStatus !== 'connected'}
+                        />
+                        <button type="submit" disabled={aiLoading || mcpStatus !== 'connected' || !aiInput.trim()}>
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
 
             <style>{`
         .fl-dashboard {
@@ -423,6 +499,127 @@ export function FLDashboard({ serverUrl }: FLDashboardProps) {
           font-size: 1.25rem;
           font-weight: 600;
           color: #e2e8f0;
+        }
+
+        .fl-ai-assistant {
+          margin-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 20px;
+        }
+
+        .fl-ai-desc {
+          font-size: 0.75rem;
+          color: #64748b;
+          margin-bottom: 12px;
+        }
+
+        .fl-ai-chat {
+          background: rgba(15, 23, 42, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 16px;
+        }
+
+        .fl-ai-messages {
+          max-height: 250px;
+          overflow-y: auto;
+          margin-bottom: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding-right: 8px;
+        }
+
+        .fl-ai-msg {
+          padding: 10px 14px;
+          border-radius: 8px;
+          max-width: 85%;
+          font-size: 0.85rem;
+          line-height: 1.4;
+        }
+
+        .fl-ai-msg.user {
+          align-self: flex-end;
+          background: rgba(99, 102, 241, 0.2);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          color: #e2e8f0;
+        }
+
+        .fl-ai-msg.model {
+          align-self: flex-start;
+          background: rgba(30, 41, 59, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          color: #cbd5e1;
+        }
+
+        .fl-ai-sender {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #64748b;
+          margin-bottom: 4px;
+          letter-spacing: 0.05em;
+        }
+
+        .fl-ai-text {
+          white-space: pre-wrap;
+        }
+
+        .fl-ai-logs {
+          margin-top: 8px;
+          font-size: 0.7rem;
+          color: #818cf8;
+          font-family: monospace;
+          background: rgba(0, 0, 0, 0.3);
+          padding: 8px;
+          border-radius: 6px;
+          border: 1px solid rgba(129, 140, 248, 0.2);
+        }
+
+        .fl-ai-log-line {
+          margin-bottom: 4px;
+        }
+
+        .fl-ai-input-form {
+          display: flex;
+          gap: 8px;
+        }
+
+        .fl-ai-input-form input {
+          flex: 1;
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #f1f5f9;
+          border-radius: 8px;
+          padding: 10px 14px;
+          outline: none;
+          font-size: 0.85rem;
+        }
+
+        .fl-ai-input-form input:focus {
+          border-color: #818cf8;
+        }
+
+        .fl-ai-input-form button {
+          background: #818cf8;
+          border: none;
+          color: white;
+          padding: 0 20px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.85rem;
+          transition: background 0.2s;
+        }
+
+        .fl-ai-input-form button:hover {
+          background: #6366f1;
+        }
+
+        .fl-ai-input-form button:disabled {
+          background: #1e293b;
+          color: #475569;
+          cursor: not-allowed;
         }
       `}</style>
         </div>
