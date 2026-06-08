@@ -18,7 +18,7 @@ export const getModelRecommendations = async (category: string, task: string, mi
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `MCP Resource Discovery for "${category}" -> "${task}". 
       Parameter range: "${minScale}" to "${maxScale}". 
       Return JSON array: [{"id": "HF_ID", "uri": "mcp://...", "capabilities": ["..."], "params": "size"}].`,
@@ -51,7 +51,7 @@ export const explainPeftConfig = async (config: ModelConfig): Promise<string> =>
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `Explain MCP optimization using ${config.peftType} for ${config.modelName}. Under 30 words.`,
       config: { systemInstruction: MCP_SYSTEM_INSTRUCTION }
     });
@@ -63,7 +63,7 @@ export const generateSimulationLog = async (round: number, accuracy: number, tas
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: `Generate MCP telemetry for round ${round}. Acc: ${accuracy.toFixed(3)}. One sentence.`,
       config: { systemInstruction: MCP_SYSTEM_INSTRUCTION }
     });
@@ -75,7 +75,7 @@ export const generateTrainingScript = async (config: ModelConfig): Promise<strin
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.0-flash',
       contents: `Raw Python Flower/PEFT MCP client script for ${config.modelName} (${config.task}). No markdown.`,
       config: { systemInstruction: MCP_SYSTEM_INSTRUCTION }
     });
