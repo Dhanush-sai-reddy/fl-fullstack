@@ -25,6 +25,7 @@ export const HostDashboard: React.FC<Props> = ({ config, sessionCode, onBack }) 
   const [loadingCode, setLoadingCode] = useState(false);
   
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const roundRef = useRef(0);
 
   const addLog = useCallback((message: string, type: LogEntry['type'] = 'INFO', source: LogEntry['source'] = 'SYSTEM') => {
     setLogs(prev => [...prev.slice(-99), {
@@ -75,16 +76,17 @@ export const HostDashboard: React.FC<Props> = ({ config, sessionCode, onBack }) 
   useEffect(() => {
     if (!isTraining) return;
     const active = clients.filter(c => c.status !== 'FAILED');
-    if (active.length > 0 && active.every(c => c.status === 'COMPLETED')) finishRound(round);
-  }, [clients, isTraining, round]);
+    if (active.length > 0 && active.every(c => c.status === 'COMPLETED')) finishRound(roundRef.current);
+  }, [clients, isTraining]);
 
   const startRound = () => {
-      const currentRound = round + 1;
+      const currentRound = roundRef.current + 1;
       if (currentRound > config.rounds) {
           setIsTraining(false);
           addLog("All communication rounds finalized via MCP.", "SUCCESS");
           return;
       }
+      roundRef.current = currentRound;
       setRound(currentRound);
       addLog(`Initiating Global Round ${currentRound}/${config.rounds}`, 'INFO');
       p2p.send('START_ROUND', { round: currentRound });

@@ -1,82 +1,59 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFL } from '../context/FLContext';
 
-declare global {
-    interface Navigator {
-        modelContext?: {
-            registerTool: (tool: any) => void;
-            unregisterTool: (name: string) => void;
-        };
-    }
-}
+const MCP_BASE_URL = 'https://huggingface.co/spaces/Dhanushsaireddy144/multi-task-codefetch-mcp';
 
 export const WebMCPBridge: React.FC = () => {
-    const { startTraining, stopTraining, isTraining, progress, deviceId, error } = useFL();
+    const { setMcpStatus } = useFL();
+    const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
-        if (!navigator.modelContext) {
-            return;
-        }
+        let cancelled = false;
 
-        const tools = [
-            {
-                name: 'start_training',
-                description: 'Starts the federated learning training process.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {},
-                },
-                execute: async () => {
-                    await startTraining();
-                    return { status: 'started' };
-                },
-            },
-            {
-                name: 'stop_training',
-                description: 'Stops the federated learning training process.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {},
-                },
-                execute: async () => {
-                    stopTraining();
-                    return { status: 'stopped' };
-                },
-            },
-            {
-                name: 'get_training_status',
-                description: 'Returns the current status of the federated learning training.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {},
-                },
-                execute: async () => {
-                    return {
-                        isTraining,
-                        progress,
-                        deviceId,
-                        error,
-                    };
-                },
-            },
-        ];
-
-        tools.forEach((tool) => {
+        const checkMCPConnection = async () => {
             try {
-                navigator.modelContext?.registerTool(tool);
+                setMcpStatus('connecting');
+
+                // Ping the MCP server to verify it's alive
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 8000);
+
+                const response = await fetch(MCP_BASE_URL, {
+                    method: 'GET',
+                    signal: controller.signal,
+                });
+                clearTimeout(timeout);
+
+                if (!cancelled) {
+                    if (response.ok || response.status === 200 || response.status === 302) {
+                        setMcpStatus('connected');
+                        console.log('[MCP] Connected to HuggingFace Space');
+                    } else {
+                        console.warn('[MCP] Server returned status:', response.status);
+                        setMcpStatus('offline');
+                    }
+                }
             } catch (err) {
+                if (!cancelled) {
+                    console.warn('[MCP] Connection check failed:', err);
+                    setMcpStatus('offline');
+                }
             }
-        });
+        };
+
+        checkMCPConnection();
+
+        // Retry connection every 30 seconds if offline
+        const interval = setInterval(() => {
+            setRetryCount(c => c + 1);
+        }, 30000);
 
         return () => {
-            tools.forEach((tool) => {
-                try {
-                    navigator.modelContext?.unregisterTool(tool.name);
-                } catch (err) {
-                }
-            });
+            cancelled = true;
+            clearInterval(interval);
         };
-    }, [startTraining, stopTraining, isTraining, progress, deviceId, error]);
+    }, [retryCount, setMcpStatus]);
 
+    // This component doesn't render anything visible
     return null;
 };

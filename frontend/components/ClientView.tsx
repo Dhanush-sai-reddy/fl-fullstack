@@ -11,14 +11,14 @@ export const ClientView: React.FC<Props> = ({ onBack }) => {
   const [sessionCode, setSessionCode] = useState('');
   const [status, setStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'READY_TO_TRAIN' | 'TRAINING' | 'UPLOADING'>('DISCONNECTED');
   const [config, setConfig] = useState<ModelConfig | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<{msg: string; time: string}[]>([]);
   const [progress, setProgress] = useState(0);
   
   // Data State
   const [file, setFile] = useState<File | null>(null);
   const [dataInfo, setDataInfo] = useState<{name: string, size: string} | null>(null);
 
-  const addLog = (msg: string) => setLogs(prev => [...prev.slice(-15), msg]);
+  const addLog = (msg: string) => setLogs(prev => [...prev.slice(-15), { msg, time: new Date().toLocaleTimeString() }]);
 
   useEffect(() => {
     return () => p2p.close();
@@ -222,8 +222,8 @@ export const ClientView: React.FC<Props> = ({ onBack }) => {
            <div className="flex-1 overflow-y-auto space-y-2">
               {logs.map((l, i) => (
                   <div key={i} className="text-slate-300 border-l-2 border-slate-700 pl-2">
-                      <span className="text-slate-600 mr-2">[{new Date().toLocaleTimeString()}]</span>
-                      {l}
+                      <span className="text-slate-600 mr-2">[{l.time}]</span>
+                      {l.msg}
                   </div>
               ))}
            </div>

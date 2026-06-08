@@ -14,6 +14,7 @@ export function FLDashboard({ serverUrl }: FLDashboardProps) {
         progress,
         error,
         hasGPU,
+        mcpStatus,
         datasetHandle,
         initialize,
         startTraining,
@@ -56,7 +57,7 @@ export function FLDashboard({ serverUrl }: FLDashboardProps) {
                     <StatusBadge
                         icon={<Wifi size={14} />}
                         label="MCP"
-                        status="success"
+                        status={mcpStatus === 'connected' ? 'success' : mcpStatus === 'connecting' ? 'idle' : 'warning'}
                     />
                 </div>
             </div>
