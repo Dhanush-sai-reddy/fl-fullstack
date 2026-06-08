@@ -20,6 +20,8 @@ export interface TrainingProgress {
     speed: number;
 }
 
+export type MCPStatus = 'connecting' | 'connected' | 'offline';
+
 export interface FLContextType {
     // State
     deviceId: string | null;
@@ -28,6 +30,7 @@ export interface FLContextType {
     progress: TrainingProgress | null;
     error: string | null;
     hasGPU: boolean;
+    mcpStatus: MCPStatus;
 
     // Dataset
     datasetHandle: FileSystemDirectoryHandle | null;
@@ -37,6 +40,7 @@ export interface FLContextType {
     startTraining: () => Promise<void>;
     stopTraining: () => void;
     selectDataset: () => Promise<boolean>;
+    setMcpStatus: (status: MCPStatus) => void;
 }
 
 const FLContext = createContext<FLContextType | null>(null);
@@ -51,6 +55,7 @@ export function FLProvider({ children, serverUrl }: { children: React.ReactNode;
     const [progress, setProgress] = useState<TrainingProgress | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [hasGPU, setHasGPU] = useState(false);
+    const [mcpStatus, setMcpStatus] = useState<MCPStatus>('connecting');
     const [datasetHandle, setDatasetHandle] = useState<FileSystemDirectoryHandle | null>(null);
 
     const workerRef = useRef<Worker | null>(null);
@@ -223,11 +228,13 @@ export function FLProvider({ children, serverUrl }: { children: React.ReactNode;
         progress,
         error,
         hasGPU,
+        mcpStatus,
         datasetHandle,
         initialize,
         startTraining,
         stopTraining,
-        selectDataset
+        selectDataset,
+        setMcpStatus
     };
 
     return <FLContext.Provider value={value}>{children}</FLContext.Provider>;
