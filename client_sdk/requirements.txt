@@ -1,0 +1,4 @@
+requests>=2.31.0
+torch>=2.0.0; platform_system != "darwin" or platform_machine != "arm64"
+torch>=2.0.0; platform_system == "darwin" and platform_machine == "arm64"
+

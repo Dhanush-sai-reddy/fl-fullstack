@@ -1,0 +1,5 @@
+{
+  "name": "FedLearn Nexus",
+  "description": "Hugging Face Model Context Protocol (MCP) Orchestrator for browser-based Federated Learning.",
+  "requestFramePermissions": []
+}
