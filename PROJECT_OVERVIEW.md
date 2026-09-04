@@ -1,180 +1,118 @@
-# fl-core: Configurable Federated Learning Framework
+# FL Fullstack — Architecture Overview
 
-## Project Overview
+## What This Is
 
-fl-core is a heavily configurable federated learning (FL) framework for medical AI. It provides a complete cloud-edge infrastructure with multiple swappable components — aggregation strategies, model architectures, PEFT methods, and triage policies. The framework is built around throughput-based aggregation planning, so the aggregation frequency adapts to measured client speeds.
+A full-stack federated learning platform. Cloud server aggregates model updates from edge clients. Every major component — aggregation strategy, model backbone, PEFT method, training hyperparameters — is configurable.
 
-## Core Philosophy: Configurability First
+## Core Components
 
-Every major component of fl-core is configurable through a centralized settings system. Users can swap out:
+### 1. Backend (FastAPI)
 
-1. **Aggregation strategies** (5 options)
-2. **Model backbones** (2 options)
-3. **PEFT methods** (2 options)
-4. **Triage policies** (3 severity levels)
-5. **Aggregation intervals** (computed from throughput)
+- JWT authentication with token-based access control
+- Project management (create, list, configure FL jobs)
+- FL round lifecycle (start round, collect updates, aggregate, increment version)
+- Client registration and heartbeat tracking
+- Model snapshot storage and distribution
+- Rate limiting per endpoint
 
-## Configurable Aggregation Strategies
+### 2. Frontend (React)
 
-The framework ships with 5 federated aggregation strategies, all configurable via a registry pattern:
+- Setup wizard for configuring FL projects
+- Host dashboard showing connected clients, round status, training metrics
+- Client view for monitoring local training
+- FL dashboard with real-time loss/accuracy charts (Recharts)
 
-```python
-STRATEGY_REGISTRY = {
-    "fedavg": fedavg,             # Federated Averaging
-    "fedprox": fedprox,           # FedProx (proximal regularization)
-    "trimmed_mean": trimmed_mean, # Byzantine-robust trimmed mean
-    "krum": krum,                 # Krum (selects most consistent client)
-    "median": coordinate_median,  # Coordinate-wise median
-}
-```
+### 3. Client SDK (Python)
 
-Each strategy accepts configurable parameters:
+- Simple `FLClient` class for connecting from Colab, PyCharm, or any Python environment
+- Automatic retry with exponential backoff
+- Round lifecycle management (get current round, submit update, fetch weights)
+- Works with any PyTorch/TF model — just pass weight deltas as dicts
 
-| Strategy | Configurable Parameters |
-|----------|------------------------|
-| FedAvg | Sample weights |
-| FedProx | `mu` (proximal term strength) |
-| Trimmed Mean | `trim_ratio` (fraction to trim) |
-| Krum | `num_malicious` (assumed adversaries) |
-| Median | None |
+### 4. Cloud Aggregation (fl-core/cloud/)
 
-Usage:
-```python
-from model.defenses import get_strategy
-
-agg = get_strategy("trimmed_mean", trim_ratio=0.2)
-new_weights = agg(updates)
-```
-
-## Configurable Model Architectures
-
-The framework supports multiple model backbones:
+Five pluggable aggregation strategies:
 
 ```python
-SUPPORTED_MODELS: List[str] = ["densenet121", "resnet50"]
-DEFAULT_MODEL: str = "densenet121"
+from cloud import get_strategy, CloudAggregator
+
+# Use any strategy with the same interface
+agg = CloudAggregator("fedprox", mu=0.01)
+aggregated_weights = agg.aggregate(client_updates)
 ```
 
-## Configurable PEFT (Parameter-Efficient Fine-Tuning)
+- **FedAvg**: Weighted average by sample count
+- **FedProx**: Same aggregation, proximal term applied client-side
+- **Trimmed Mean**: Removes top/bottom fraction per coordinate (Byzantine-robust)
+- **Krum**: Selects the update closest to all others
+- **Median**: Coordinate-wise median (robust to outliers)
 
-Two PEFT methods are supported:
+### 5. Edge Daemon (fl-core/edge/)
+
+Client-side worker that:
+- Calibrates by measuring training throughput (samples/sec)
+- Reports class distribution and timing to the cloud
+- Trains locally for configurable epochs
+- Submits weight updates
+
+### 6. Throughput Benchmark (fl-core/benchmarks/)
+
+Measures client performance and plans aggregation:
+
+- Records samples/sec, time/batch, estimated epoch time per client
+- Identifies bottleneck client (slowest)
+- Computes optimal aggregation interval (waits for slowest active client)
+- Drops stragglers below configurable threshold
+- Recommends batch size from client median speeds
+
+## Training Flow
+
+```
+1. Host creates project, selects strategy (e.g. "fedprox")
+2. Edge clients connect, submit calibration data
+3. Cloud runs throughput benchmark → plans aggregation interval
+4. Cloud distributes current global weights (version N)
+5. Clients train locally for LOCAL_EPOCHS
+6. Clients submit weight deltas to /api/fl/updates
+7. Cloud aggregates using configured strategy
+8. Version incremented to N+1
+9. Repeat from step 4
+```
+
+## Configuration
+
+All settings in `config.py`:
 
 ```python
-PEFT_METHOD: str = "lora"  # or "qlora"
-LORA_R: int = 4
-LORA_ALPHA: int = 8
-LORA_DROPOUT: float = 0.1
-LORA_TARGET_MODULES: List[str] = ["conv2"]
-QLORA_BITS: int = 4
+from config import settings
+
+# Switch aggregation strategy
+settings.set_strategy("krum", num_malicious=2)
+
+# Training hyperparameters
+settings.LOCAL_EPOCHS = 5
+settings.BATCH_SIZE = 64
+settings.LR = 0.001
+
+# Model selection
+settings.DEFAULT_MODEL = "densenet121"
+settings.PEFT_METHOD = "lora"
 ```
 
-## Configurable Triage Policy
+## Deployment
 
-The framework defines configurable pathology severity tiers:
-
-```python
-CRITICAL_PATHOLOGIES = ["Pneumothorax", "Edema"]
-URGENT_PATHOLOGIES = ["Pneumonia", "Consolidation", "Effusion", "Infiltration"]
-ROUTINE_PATHOLOGIES = ["Cardiomegaly", "Emphysema", ...]
-SAFETY_OVERRIDE_ENABLED: bool = True
+```bash
+docker-compose up --build
 ```
 
-14 pathologies supported, grouped by clinical urgency.
+Services:
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
 
-## Throughput-Based Aggregation Planning
+## Key Design Decisions
 
-The framework's key innovation is **adaptive aggregation scheduling based on measured client throughput**. Each edge client reports its calibration data (samples/sec, time per batch, class distribution), and the cloud uses this to:
-
-- Estimate the optimal aggregation interval (waits for the slowest active client)
-- Drop stragglers below a configurable speed threshold
-- Compute expected round time including network latency
-- Pick a recommended batch size from client medians
-
-Usage:
-```python
-from fl_core.benchmarks import ThroughputBenchmark, AdaptiveScheduler
-
-bench = ThroughputBenchmark()
-scheduler = AdaptiveScheduler(bench)
-
-# Add clients as they calibrate
-scheduler.update_profile(client_a_profile)
-scheduler.update_profile(client_b_profile)
-
-# Decide when to aggregate
-if scheduler.should_aggregate(num_ready=2, elapsed_sec=180):
-    trigger_aggregation()
-
-plan = scheduler.get_plan()
-print(f"Recommended interval: {plan.recommended_interval_sec}s")
-print(f"Drop slow clients: {plan.drop_slow_clients}")
-```
-
-## Cloud-Edge Architecture
-
-The framework has a two-tier architecture:
-
-### Cloud Tier (Aggregator)
-- Cloud manager (`cloud/manager.py`) with tenant management
-- FL server (`fl/server.py`) with configurable strategy selection
-- JWT authentication
-- SQLite database for job tracking
-- Background threads for periodic aggregation
-
-### Edge Tier (Client)
-- FL client (`fl/client.py`)
-- Runs locally, sends only weight updates
-- Configurable local epochs, batch size, learning rate
-
-### Key Configurable Cloud Settings:
-```python
-DAEMON_PORT: int = 8004
-CLOUD_MANAGER_PORT: int = 8000
-JWT_SECRET: str
-JWT_EXPIRE_MINUTES: int = 1440
-NUM_ROUNDS: int = 3
-NUM_CLIENTS: int = 3
-LOCAL_EPOCHS: int = 3
-```
-
-## Federated Training Flow
-
-1. Cloud manager spawns FL server with configured strategy
-2. Edge clients connect with calibration data (samples, class distribution, timing)
-3. Cloud runs throughput benchmark to plan aggregation interval
-4. Server distributes current global weights
-5. Clients train locally for `LOCAL_EPOCHS`
-6. Clients send weight updates back to server
-7. Server aggregates using configured strategy
-8. New global weights version incremented
-9. Repeat for `NUM_ROUNDS`
-
-## Deployment Options
-
-Multiple deployment configurations supported:
-
-- **Local development**: Run server and clients locally
-- **Kubernetes**: `k8s/superlink.yaml` deployment manifests
-- **Systemd**: `systemd/` service files
-- **Docker**: Container support via FastAPI
-
-## Key Differentiators
-
-1. **Heavily configurable** - Every major component has a registry/factory pattern
-2. **Privacy-preserving** - Data never leaves the edge (only weight updates travel)
-3. **Throughput-aware aggregation** - Interval adapts to measured client speeds
-4. **Medical-grade** - Built specifically for healthcare AI with triage policies
-5. **Production-ready** - JWT auth, tenant management, periodic aggregation
-
-## Code Statistics
-
-- Total Python files: 15+
-- Lines of code: ~3,000+
-- Aggregation strategies: 5
-- Model backbones: 2
-- PEFT methods: 2
-- Supported pathologies: 14
-
-## Summary
-
-fl-core is a production-grade federated learning framework focused on **configurability and throughput-aware scheduling**. Every component — aggregation strategy, model architecture, PEFT method, triage policy, and aggregation interval — is swappable via a central configuration system. The core value is the FL infrastructure (cloud daemon + edge clients + configurable aggregation) enhanced with smart aggregation planning based on real client performance measurements.
+1. **Data never leaves the edge** — only weight deltas (floats) are transmitted
+2. **Strategy-agnostic backend** — any aggregation method plugs in via registry
+3. **Throughput-aware scheduling** — aggregation interval adapts to measured client speeds, not fixed timers
+4. **Client SDK is model-agnostic** — works with any framework, just pass weight dicts
+5. **JWT auth on all endpoints** — no open endpoints except health check

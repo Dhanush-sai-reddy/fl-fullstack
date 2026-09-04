@@ -1,82 +1,118 @@
-# FL Platform - Decentralized AI Orchestration
+# FL Fullstack
 
-A hybrid federated learning system that bridges the gap between local browser-based simulation and real-world distributed training. Orchestrated by **Google Gemini**, visualized with **React 19**, and powered by **FastAPI**.
+A configurable federated learning platform with a FastAPI backend, React frontend dashboard, Python client SDK, and throughput-aware aggregation scheduling. Data never leaves the edge — only weight updates travel.
 
-🚀 **Live MCP Server**: [Hugging Face Space](https://huggingface.co/spaces/Dhanushsaireddy144/multi-task-codefetch-mcp)
+## Project Structure
 
-## Key Features
+```
+fl-fullstack/
+├── backend/              FastAPI server (auth, projects, FL aggregation, models)
+│   └── app/
+│       ├── api/          Route handlers
+│       ├── core/         Config, auth, rate limiting
+│       ├── db/           SQLAlchemy models, session management
+│       ├── models/       DB models (users, projects, rounds, clients)
+│       ├── schemas/      Pydantic request/response schemas
+│       └── services/     FedAvg aggregation, business logic
+├── frontend/             React 19 dashboard (Vite + Tailwind)
+│   └── components/       SetupWizard, HostDashboard, ClientView, FLDashboard
+├── client_sdk/           Python SDK for edge clients (Colab, PyCharm, etc.)
+├── cloud/                Configurable aggregation strategies (5 options)
+├── edge/                 Edge daemon (client-side FL worker)
+├── benchmarks/           Throughput measurement and aggregation scheduling
+├── config.py             Centralized settings
+├── docker-compose.yml    One-command deployment
+└── PROJECT_OVERVIEW.md   Detailed architecture docs
+```
 
-### 🌐 Browser-Based Training (WebGPU)
-- **Zero-Install Client**: Train models directly in the browser using WebGPU compute shaders.
-- **LoRA Support**: Efficient fine-tuning of Large Language Models (LLMs) using Low-Rank Adaptation (LoRA).
-- **Privacy-First**: Raw data never leaves the user's device; only weight deltas are shared.
-- **OPFS Checkpointing**: Persistent storage of model weights and training progress using the Origin Private File System.
-- **Sybil Resistance**: Device fingerprinting prevents malicious actors from flooding the network with fake clients.
+## What It Does
 
-### 🤖 Gemini AI Orchestrator
-- **Autonomous Script Generation**: Gemini 1.5 Pro dynamically writes PyTorch/Flower training clients based on project requirements.
-- **Model Discovery**: Automatically finds optimal models on Hugging Face based on task description.
-- **Automated Telemetry**: AI-generated logs and training summaries for human-readable insight into convergence status.
+1. **Host** creates a project, selects an aggregation strategy, and gets a session code
+2. **Edge clients** connect using the Python SDK or browser, calibrate their throughput
+3. **Cloud** measures client speeds and computes optimal aggregation intervals
+4. **Aggregation** runs on the server using the configured strategy (FedAvg, FedProx, etc.)
+5. **Dashboard** shows real-time training metrics, client status, and round history
 
-### 🔗 Model Context Protocol (MCP)
-- **Standardized Handshake**: Custom protocol for negotiating training capabilities between Host and Edge nodes.
-- **Remote Validation**: Validates task compatibility against a deployed MCP server on Hugging Face Spaces.
-- **Resource Discovery**: Exposes available models and datasets via a uniform interface.
+## Configurable Aggregation Strategies
 
-### 📊 Performance & Visualization
-- **Glassmorphism UI**: Futuristic admin dashboard built with Tailwind CSS and Framer Motion.
-- **Real-time Analytics**: `Recharts` implementation for tracking loss curves, accuracy, and memory usage across rounds.
-- **Efficient Aggregation**: **Weighted FedAvg** algorithm with in-place tensor operations to minimize memory overhead.
+| Strategy | What It Does | Configurable Parameters |
+|----------|-------------|------------------------|
+| `fedavg` | Weighted mean by dataset size | Sample weights |
+| `fedprox` | FedAvg + proximal regularization (client-side) | `mu` |
+| `trimmed_mean` | Byzantine-robust trimmed mean | `trim_ratio` |
+| `krum` | Selects the most consistent client update | `num_malicious` |
+| `median` | Coordinate-wise median | None |
 
-## Architecture
+Switch strategies via config:
+```python
+from config import settings
+settings.set_strategy("krum", num_malicious=2)
+```
 
-1. **Frontend (React + Vite)**:
-   - `fl.worker.ts`: Web Worker for background training.
-   - `webgpu-engine.ts`: Custom WGSL compute shaders for matrix multiplication and gradient descent.
-   - `FLContext.tsx`: State management for training lifecycle.
+## Throughput-Based Aggregation
 
-2. **Backend (FastAPI)**:
-   - `/api/fl/updates`: Receives weight deltas from browser clients.
-   - `/api/fl/models`: Broadcasts global model weights.
-   - `fedavg_weighted`: Aggregates updates securely.
+The cloud doesn't just aggregate blindly — it measures how fast each client trains and schedules aggregation accordingly:
 
-3. **MCP Server (Python)**:
-   - Hosted on Hugging Face Spaces.
-   - Provides task validation and inference capabilities.
+- Waits for the slowest active client before aggregating
+- Drops stragglers below a configurable speed threshold
+- Computes expected round time including network latency
+- Recommends batch size from client median speeds
+
+## Quick Start
+
+### Docker (recommended)
+
+```bash
+git clone https://github.com/Dhanush-sai-reddy/fl-fullstack.git
+cd fl-fullstack
+docker-compose up --build
+```
+
+Open `http://localhost:5173` for the dashboard.
+
+### Local Development
+
+**Backend:**
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Client SDK:**
+```bash
+cd client_sdk
+pip install -r requirements.txt
+python example_colab.py
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/api/auth/login` | POST | Login, get JWT token |
+| `/api/projects` | CRUD | Manage FL projects |
+| `/api/fl/rounds` | GET | Get training rounds |
+| `/api/fl/updates` | POST | Submit weight updates |
+| `/api/fl/models` | GET | Get global model weights |
+| `/api/clients` | GET | List connected clients |
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript, **WebGPU**, Vite, Tailwind CSS, Recharts
-- **Backend**: FastAPI, PostgreSQL, SQLAlchemy
-- **AI/ML**: Google Gemini API (Orchestration), Hugging Face Transformers, PEFT/LoRA
-- **DevOps**: Docker Compose, Nginx
-
-## Setup & Running
-
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for local dev)
-- Google Gemini API Key
-
-### Quick Start (Docker)
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Dhanush-sai-reddy/fl-fullstack.git
-   cd fl-fullstack
-   ```
-
-2. Create a `.env` file in `frontend/`:
-   ```env
-   VITE_GEMINI_API_KEY=your_api_key_here
-   ```
-
-3. Start the stack:
-   ```bash
-   docker-compose up --build
-   ```
-
-4. Open `http://localhost:5173` and select **"Browser Training"**.
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Pydantic
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Recharts
+- **Client SDK**: Python, requests
+- **FL Core**: NumPy, configurable aggregation registry
+- **DevOps**: Docker Compose
 
 ## License
+
 MIT
